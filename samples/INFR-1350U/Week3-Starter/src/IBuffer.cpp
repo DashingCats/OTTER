@@ -6,7 +6,7 @@ IBuffer::IBuffer(GLenum type, GLenum usage) :
 	_handle(0)
 {
 	// implement
-	type = type;
+	_type = type;
 	_usage = usage;
 	glCreateBuffers(1, &_handle);
 }
