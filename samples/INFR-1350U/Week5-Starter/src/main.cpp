@@ -1,179 +1,100 @@
-#include <Logging.h>
-#include <iostream>
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <iostream>
+#include <fstream> //03
+#include <string> //03
 
-#include <filesystem>
-#include <json.hpp>
-#include <fstream>
-
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
-#include <GLM/gtc/type_ptr.hpp>
-
-#include "IndexBuffer.h"
-#include "VertexBuffer.h"
-#include "VertexArrayObject.h"
-#include "Shader.h"
-#include "Camera.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "InputHelpers.h"
-#include "MeshBuilder.h"
-#include "MeshFactory.h"
-#include "NotObjLoader.h"
-#include "VertexTypes.h"
-
-#define LOG_GL_NOTIFICATIONS
-
-/*
-	Handles debug messages from OpenGL
-	https://www.khronos.org/opengl/wiki/Debug_Output#Message_Components
-	@param source    Which part of OpenGL dispatched the message
-	@param type      The type of message (ex: error, performance issues, deprecated behavior)
-	@param id        The ID of the error or message (to distinguish between different types of errors, like nullref or index out of range)
-	@param severity  The severity of the message (from High to Notification)
-	@param length    The length of the message
-	@param message   The human readable message from OpenGL
-	@param userParam The pointer we set with glDebugMessageCallback (should be the game pointer)
-*/
-void GlDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-	std::string sourceTxt;
-	switch (source) {
-	case GL_DEBUG_SOURCE_API: sourceTxt = "DEBUG"; break;
-	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: sourceTxt = "WINDOW"; break;
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: sourceTxt = "SHADER"; break;
-	case GL_DEBUG_SOURCE_THIRD_PARTY: sourceTxt = "THIRD PARTY"; break;
-	case GL_DEBUG_SOURCE_APPLICATION: sourceTxt = "APP"; break;
-	case GL_DEBUG_SOURCE_OTHER: default: sourceTxt = "OTHER"; break;
-	}
-	switch (severity) {
-	case GL_DEBUG_SEVERITY_LOW:          LOG_INFO("[{}] {}", sourceTxt, message); break;
-	case GL_DEBUG_SEVERITY_MEDIUM:       LOG_WARN("[{}] {}", sourceTxt, message); break;
-	case GL_DEBUG_SEVERITY_HIGH:         LOG_ERROR("[{}] {}", sourceTxt, message); break;
-		#ifdef LOG_GL_NOTIFICATIONS
-	case GL_DEBUG_SEVERITY_NOTIFICATION: LOG_INFO("[{}] {}", sourceTxt, message); break;
-		#endif
-	default: break;
-	}
-}
+#include <GLM/glm.hpp> //04
+#include <glm/gtc/matrix_transform.hpp> //04
 
 GLFWwindow* window;
-Camera::sptr camera = nullptr;
-
-void GlfwWindowResizedCallback(GLFWwindow* window, int width, int height) {
-	glViewport(0, 0, width, height);
-	camera->ResizeWindow(width, height);
-}
 
 bool initGLFW() {
 	if (glfwInit() == GLFW_FALSE) {
-		LOG_ERROR("Failed to initialize GLFW");
+		std::cout << "Failed to Initialize GLFW" << std::endl;
 		return false;
 	}
 
-#ifdef _DEBUG
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-#endif
-	
 	//Create a new GLFW window
-	window = glfwCreateWindow(800, 800, "INFR1350U", nullptr, nullptr);
+	window = glfwCreateWindow(1000, 800, "INFR2670", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
-
-	// Set our window resized callback
-	glfwSetWindowSizeCallback(window, GlfwWindowResizedCallback);
 
 	return true;
 }
 
 bool initGLAD() {
 	if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) == 0) {
-		LOG_ERROR("Failed to initialize Glad");
+		std::cout << "Failed to initialize Glad" << std::endl;
 		return false;
 	}
+}
+
+
+GLuint shader_program;
+
+bool loadShaders() {
+	// Read Shaders from file
+	std::string vert_shader_str;
+	std::ifstream vs_stream("vertex_shader.glsl", std::ios::in);
+	if (vs_stream.is_open()) {
+		std::string Line = "";
+		while (getline(vs_stream, Line))
+			vert_shader_str += "\n" + Line;
+		vs_stream.close();
+	}
+	else {
+		printf("Could not open vertex shader!!\n");
+		return false;
+	}
+	const char* vs_str = vert_shader_str.c_str();
+
+	std::string frag_shader_str;
+	std::ifstream fs_stream("frag_shader.glsl", std::ios::in);
+	if (fs_stream.is_open()) {
+		std::string Line = "";
+		while (getline(fs_stream, Line))
+			frag_shader_str += "\n" + Line;
+		fs_stream.close();
+	}
+	else {
+		printf("Could not open fragment shader!!\n");
+		return false;
+	}
+	const char* fs_str = frag_shader_str.c_str();
+
+	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vs, 1, &vs_str, NULL);
+	glCompileShader(vs);
+	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fs, 1, &fs_str, NULL);
+	glCompileShader(fs);
+
+	shader_program = glCreateProgram();
+	glAttachShader(shader_program, fs);
+	glAttachShader(shader_program, vs);
+	glLinkProgram(shader_program);
+
 	return true;
 }
 
-void InitImGui() {
-	// Creates a new ImGUI context
-	ImGui::CreateContext();
-	// Gets our ImGUI input/output 
-	ImGuiIO& io = ImGui::GetIO();
-	// Enable keyboard navigation
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	// Allow docking to our window
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	// Allow multiple viewports (so we can drag ImGui off our window)
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	// Allow our viewports to use transparent backbuffers
-	io.ConfigFlags |= ImGuiConfigFlags_TransparentBackbuffers;
+// Lecture 04
+GLfloat rotY = 0.0f;
+GLfloat rotX = 0.0f;
 
-	// Set up the ImGui implementation for OpenGL
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 410");
+void keyboard() {
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		rotY += 0.1;
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		rotY -= 0.1;
 
-	// Dark mode FTW
-	ImGui::StyleColorsDark();
-
-	// Get our imgui style
-	ImGuiStyle& style = ImGui::GetStyle();
-	//style.Alpha = 1.0f;
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 0.8f;
-	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		rotX += 0.1;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		rotX -= 0.1;
 }
 
-void ShutdownImGui()
-{
-	// Cleanup the ImGui implementation
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	// Destroy our ImGui context
-	ImGui::DestroyContext();
-}
-
-std::vector<std::function<void()>> imGuiCallbacks;
-void RenderImGui() {
-	// Implementation new frame
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	// ImGui context new frame
-	ImGui::NewFrame();
-
-	if (ImGui::Begin("Debug")) {
-		// Render our GUI stuff
-		for (auto& func : imGuiCallbacks) {
-			func();
-		}
-		ImGui::End();
-	}
-	
-	// Make sure ImGui knows how big our window is
-	ImGuiIO& io = ImGui::GetIO();
-	int width{ 0 }, height{ 0 };
-	glfwGetWindowSize(window, &width, &height);
-	io.DisplaySize = ImVec2((float)width, (float)height);
-
-	// Render all of our ImGui elements
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-	// If we have multiple viewports enabled (can drag into a new window)
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-		// Update the windows that ImGui is using
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-		// Restore our gl context
-		glfwMakeContextCurrent(window);
-	}
-}
 
 int main() {
-	Logger::Init(); // We'll borrow the logger from the toolkit, but we need to initialize it
-
 	//Initialize GLFW
 	if (!initGLFW())
 		return 1;
@@ -182,223 +103,211 @@ int main() {
 	if (!initGLAD())
 		return 1;
 
-	LOG_INFO(glGetString(GL_RENDERER));
-	LOG_INFO(glGetString(GL_VERSION));
-
-	// Let OpenGL know that we want debug output, and route it to our handler function
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(GlDebugMessage, nullptr);
-
-	static const float points[] = {
-		-0.5f, -0.5f, 0.1f,
-		 0.5f, -0.5f, 0.1f,
-		-0.5f,  0.5f, 0.1f
+	// Cube data
+	static const GLfloat points[] = {//front face, 2 triangles
+		-0.5f, -0.5f, 0.5f,//0  front face
+		0.5f, -0.5f, 0.5f, //3
+		-0.5f, 0.5f, 0.5f, //1
+		0.5f, -0.5f, 0.5f, //3
+		0.5f, 0.5f, 0.5f, //2
+		-0.5f, 0.5f, 0.5f, //1
+		0.5f, -0.5f, 0.5f, //3 Right face
+		0.5f, -0.5f, -0.5f, //7
+		0.5f, 0.5f, 0.5f, //2
+		0.5f, -0.5f, -0.5f, //7
+		0.5f, 0.5f, -0.5f, //6
+		0.5f, 0.5f, 0.5f,  //2
+		-0.5f, -0.5f, -0.5f, //4 Left face
+		-0.5f, -0.5f, 0.5f, //0
+		-0.5f, 0.5f, -0.5f, //5
+		-0.5f, -0.5f, 0.5f, //0
+		-0.5f, 0.5f, 0.5f,  //1
+		-0.5f, 0.5f, -0.5f,  //5
+		-0.5f, -0.5f, -0.5f,//0  front face
+		0.5f, -0.5f, -0.5f, //3
+		-0.5f, 0.5f, -0.5f, //1
+		0.5f, -0.5f, -0.5f, //3
+		0.5f, 0.5f, -0.5f, //2
+		-0.5f, 0.5f, -0.5f //1
 	};
+	
+	
 
-	static const float colors[] = {
+	// Color data
+	static const GLfloat colors[] = {
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
 		1.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f
+		0.0f, 1.0f, 0.0f,
+		0.0f, 1.0f, 0.0f,
+		0.0f, 1.0f, 1.0f,
+		0.0f, 1.0f, 1.0f,
+		0.0f, 1.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f
 	};
-
-	//VBO - Vertex buffer object
-	VertexBuffer::sptr posVbo = VertexBuffer::Create();
-	posVbo->LoadData(points, 9);
-
-	VertexBuffer::sptr color_vbo = VertexBuffer::Create();
-	color_vbo->LoadData(colors, 9);
-
-	VertexArrayObject::sptr vao = VertexArrayObject::Create();
-	vao->AddVertexBuffer(posVbo, {
-		BufferAttribute(0, 3, GL_FLOAT, false, 0, NULL)
-	});
-	vao->AddVertexBuffer(color_vbo, {
-		BufferAttribute(1, 3, GL_FLOAT, false, 0, NULL)
-	});
-
-	static const VertexPosCol interleaved[] = {
-    //     X      Y     Z       R     G    B
-		{{ 0.5f, -0.5f, 0.0f},   {0.0f, 0.0f, 0.0f, 1.0f}},
-		{{ 0.5f,  0.5f, 0.0f},  {0.3f, 0.2f, 0.5f, 1.0f}},
-	    {{-0.5f,  0.5f, 0.0f},  {1.0f, 1.0f, 0.0f, 1.0f}},
-		{{ 0.5f,  1.0f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f}}
-	};
-
-	VertexBuffer::sptr interleaved_vbo = VertexBuffer::Create();
-	interleaved_vbo->LoadData(interleaved, 4);
-
-	static const uint16_t indices[] = {
-		0, 1, 2,
-		1, 3, 2
-	};
-	IndexBuffer::sptr interleaved_ibo = IndexBuffer::Create();
-	interleaved_ibo->LoadData(indices, 3 * 2);
-
-	size_t stride = sizeof(VertexPosCol);
-	VertexArrayObject::sptr vao2 = VertexArrayObject::Create();
-	vao2->AddVertexBuffer(interleaved_vbo, VertexPosCol::V_DECL);
-	vao2->SetIndexBuffer(interleaved_ibo);
-
-	////////////// NEW STUFF
 	
-	// We'll use the provided mesh builder to build a new mesh with a few elements
-	MeshBuilder<VertexPosNormTexCol> builder = MeshBuilder<VertexPosNormTexCol>();
-	MeshFactory::AddPlane(builder, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 0.0, 0.0f), glm::vec2(100.0f, 100.0f), glm::vec4(1.0f));
-	MeshFactory::AddCube(builder, glm::vec3(-2.0f, 0.0f, 0.5f), glm::vec3(1.0f, 2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 45.0f), glm::vec4(1.0f, 0.5f, 0.5f, 1.0f));
-	MeshFactory::AddIcoSphere(builder, glm::vec3(0.0f, 0.f, 1.0f), 0.5f, 2, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-	MeshFactory::AddUvSphere(builder, glm::vec3(1.0f, 0.f, 1.0f), 0.5f, 2, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-	VertexArrayObject::sptr vao3 = builder.Bake();
-
-	// We'll be implementing a loader that works a bit like an OBJ loader to learn how to read files, we'll
-	// load an exact copy of the mesh created above
-	VertexArrayObject::sptr vao4 = NotObjLoader::LoadFromFile("Sample.notobj");
+	//////// LECTURE 05 STARTS HERE
+	static const GLfloat normals[] = {
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,
+		// Face 2 (right)
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		// Face 3 (left)
+		-1.0f, 0.0f, 0.0f,
+		-1.0f, 0.0f, 0.0f,
+		-1.0f, 0.0f, 0.0f,
+		-1.0f, 0.0f, 0.0f,
+		-1.0f, 0.0f, 0.0f,
+		-1.0f, 0.0f, 0.0f
+	};
 	
-	// Load our shaders
-	Shader::sptr shader = Shader::Create();
-	shader->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
-	shader->LoadShaderPartFromFile("shaders/frag_blinn_phong.glsl", GL_FRAGMENT_SHADER);  
-	shader->Link();  
+	//Lecture 5
+	GLfloat cameraPos[] = { 0.0f, 0.0f, 3.0f };
+	GLfloat lightPos[] = { 0.0f, 0.0f, 3.0f };
+	
+	//VBO
+	GLuint pos_vbo = 0;
+	glGenBuffers(1, &pos_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, pos_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+	
+	GLuint color_vbo = 1;
+	glGenBuffers(1, &color_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
 
-	glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 2.0f);
-	glm::vec3 lightCol = glm::vec3(0.3f, 0.2f, 0.5f);
-	float     lightAmbientPow = 0.05f;
-	float     lightSpecularPow = 1.0f;
-	glm::vec3 ambientCol = glm::vec3(1.0f);
-	float     ambientPow = 0.1f;
-	float     shininess = 4.0f;
-	// These are our application / scene level uniforms that don't necessarily update
-	// every frame
-	shader->SetUniform("u_LightPos", lightPos);
-	shader->SetUniform("u_LightCol", lightCol);
-	shader->SetUniform("u_AmbientLightStrength", lightAmbientPow);
-	shader->SetUniform("u_SpecularLightStrength", lightSpecularPow);
-	shader->SetUniform("u_AmbientCol", ambientCol);
-	shader->SetUniform("u_AmbientStrength", ambientPow);
-	shader->SetUniform("u_Shininess", shininess);
+	GLuint normal_vbo = 2;
+	glGenBuffers(1, &normal_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, pos_vbo);
 
-	// We'll add some ImGui controls to control our shader
-	imGuiCallbacks.push_back([&]() {
-		if (ImGui::CollapsingHeader("Scene Level Lighting Settings"))
-		{
-			if (ImGui::ColorPicker3("Ambient Color", glm::value_ptr(ambientCol))) {
-				shader->SetUniform("u_AmbientCol", ambientCol);
-			}
-			if (ImGui::SliderFloat("Fixed Ambient Power", &ambientPow, 0.01f, 1.0f)) {
-				shader->SetUniform("u_AmbientStrength", ambientPow); 
-			}
-		}
-		if (ImGui::CollapsingHeader("Light Level Lighting Settings")) 
-		{
-			if (ImGui::SliderFloat3("Light Pos", glm::value_ptr(lightPos), -10.0f, 10.0f)) {
-				shader->SetUniform("u_LightPos", lightPos);
-			}
-			if (ImGui::ColorPicker3("Light Col", glm::value_ptr(lightCol))) {
-				shader->SetUniform("u_LightCol", lightCol);
-			}
-			if (ImGui::SliderFloat("Light Ambient Power", &lightAmbientPow, 0.0f, 1.0f)) {
-				shader->SetUniform("u_AmbientLightStrength", lightAmbientPow);
-			}
-			if (ImGui::SliderFloat("Light Specular Power", &lightSpecularPow, 0.0f, 1.0f)) {
-				shader->SetUniform("u_SpecularLightStrength", lightSpecularPow);
-			}
-		}
-		if (ImGui::CollapsingHeader("Material Level Lighting Settings"))
-		{
-			if (ImGui::SliderFloat("Shininess", &shininess, 0.1f, 128.0f)) {
-				shader->SetUniform("u_Shininess", shininess);
-			}
-		}
-	});
+	//			(index, size, type, normalized, stride, pointer)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	//			(stride: byte offset between consecutive values)
+	//			(pointer: offset of the first component of the 
+	//			first attribute in the array - initial value is 0)
+	
+	glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
-	// GL states
+	//Lecture 5
+	glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2); //Lecture 05
+
+	// Load your shaders
+	if (!loadShaders())
+		return 1;
+
+	// Lecture 04
+	// Projection matrix : 45° Field of View, ratio, display range : 0.1 unit <-> 100 units
+	int width, height;
+	glfwGetWindowSize(window, &width, &height);
+	glm::mat4 Projection = 
+		glm::perspective(glm::radians(45.0f), 
+		(float)width / (float)height, 0.1f, 100.0f);
+
+	// Camera matrix
+	glm::mat4 View = glm::lookAt(
+		glm::vec3(0, 0, 3), // Camera is at (0,0,3), in World Space
+		glm::vec3(0, 0, 0), // and looks at the origin
+		glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+	);
+	
+	// Model matrix : an identity matrix (model will be at the origin)
+	glm::mat4 Model = glm::mat4(1.0f);
+
+	// Our ModelViewProjection : multiplication of our 3 matrices
+	glm::mat4 mvp = Projection * View * Model; // Remember, matrix multiplication is the other way around
+
+	// Get a handle for our "MVP" uniform
+	// Only during the initialisation
+	GLuint MatrixID = 
+		glGetUniformLocation(shader_program, "MVP");
+	
+	//Lecture 5
+	GLuint ViewID =
+		glGetUniformLocation(shader_program, "View");
+	GLuint ModelID =
+		glGetUniformLocation(shader_program, "Model");
+	GLuint LightPosID =
+		glGetUniformLocation(shader_program, "LightPos");
+	///////////
+	
+	
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
 
-	glm::mat4 transform = glm::mat4(1.0f);
-	glm::mat4 transform2 = glm::mat4(1.0f);
-	glm::mat4 transform3 = glm::mat4(1.0f);
+	// Face culling
+	//glEnable(GL_CULL_FACE);
+	// glFrontFace(GL_CW);
 
-	camera = Camera::Create();
-	camera->SetPosition(glm::vec3(0, 3, 3)); // Set initial position
-	camera->SetUp(glm::vec3(0, 0, 1)); // Use a z-up coordinate system
-	camera->LookAt(glm::vec3(0.0f)); // Look at center of the screen
-	camera->SetFovDegrees(90.0f); // Set an initial FOV
+	// glCullFace(GL_FRONT); //GL_BACK, GL_FRONT_AND_BACK
 	
-	// This is an example of a key press handling helper. Look at InputHelpers.h an .cpp to see
-	// how this is implemented. Note that the ampersand here is capturing the variables within
-	// the scope. If you wanted to do some method on the class, your best bet would be to give it a method and
-	// use std::bind
-	bool is_wireframe = false;
-	KeyPressWatcher tKeyWatcher = KeyPressWatcher(GLFW_KEY_T, [&]() {
-		is_wireframe = !is_wireframe;
-		glPolygonMode(GL_FRONT, is_wireframe ? GL_LINE : GL_FILL);
-	});
 
-	InitImGui();
-		
-	// Our high-precision timer
-	double lastFrame = glfwGetTime();
-	
 	///// Game loop /////
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
-		// Calculate the time since our last frame (dt)
-		double thisFrame = glfwGetTime();
-		float dt = static_cast<float>(thisFrame - lastFrame);
-
-		// We need to poll our key watchers so they can do their logic with the GLFW state
-		tKeyWatcher.Poll(window);
-
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-			transform3 = glm::translate(transform3, glm::vec3( 1.0f * dt, 0.0f, 0.0f));
-		}
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-			transform3 = glm::translate(transform3, glm::vec3(-1.0f * dt, 0.0f, 0.0f));
-		}
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-			transform3 = glm::translate(transform3, glm::vec3(0.0f, -1.0f * dt, 0.0f));
-		}
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-			transform3 = glm::translate(transform3, glm::vec3(0.0f,  1.0f * dt, 0.0f));
-		}
-				
-		transform = glm::rotate(glm::mat4(1.0f), static_cast<float>(thisFrame), glm::vec3(0, 1, 0));
-		transform2 = transform * glm::translate(glm::mat4(1.0f), glm::vec3(0, 0.0f, glm::sin(static_cast<float>(thisFrame))));
-		
-		glClearColor(0.08f, 0.17f, 0.31f, 1.0f);
+		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		shader->Bind();
-		// These are the uniforms that update only once per frame
-		//shader->SetUniformMatrix("u_View", camera->GetView());
-		shader->SetUniform("u_CamPos", camera->GetPosition());
+		glUseProgram(shader_program);
+		
+		Model = glm::mat4(1.0f);
+		keyboard();												//X	    Y     Z
+		Model = glm::rotate(Model, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
+		Model = glm::rotate(Model, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
+		mvp = Projection * View * Model;
+		
+		//Lecture 04
+		// Send our transformation to the currently bound shader, in the "MVP" uniform
+		// This is done in the main loop since each model will have a different MVP matrix (At least for the M part)
+		glUniformMatrix4fv(MatrixID, 1, 
+			GL_FALSE, &mvp[0][0]);
 
-		// These uniforms update for every object we want to draw
-		shader->SetUniformMatrix("u_ModelViewProjection", camera->GetViewProjection() * transform);
-		shader->SetUniformMatrix("u_Model", transform);
-		shader->SetUniformMatrix("u_ModelRotation", glm::mat3(transform));
-		vao->Render();
+		//Lecture 05
+		glUniformMatrix4fv(ViewID, 1,
+			GL_FALSE, &View[0][0]);
+		glUniformMatrix4fv(ModelID, 1,
+			GL_FALSE, &Model[0][0]);
+		glUniform3fv(LightPosID, 1, &lightPos[0]);
+		////////////
 
-		shader->SetUniformMatrix("u_ModelViewProjection", camera->GetViewProjection()* transform2);
-		shader->SetUniformMatrix("u_Model", transform2);
-		shader->SetUniformMatrix("u_ModelRotation", glm::mat3(transform2));
-		vao2->Render();
-
-		shader->SetUniformMatrix("u_ModelViewProjection", camera->GetViewProjection() * transform3);
-		shader->SetUniformMatrix("u_Model", transform3);
-		shader->SetUniformMatrix("u_ModelRotation", glm::mat3(transform3));
-		vao3->Render();
-
-		RenderImGui();
-
+		// draw points 0-18 
+		glDrawArrays(GL_TRIANGLES, 0, 24);
+		
+		
 		glfwSwapBuffers(window);
-		lastFrame = thisFrame;
 	}
-
-	ShutdownImGui();
-
-	// Clean up the toolkit logger so we don't leak memory
-	Logger::Uninitialize();
 	return 0;
+	
 }
