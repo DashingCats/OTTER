@@ -18,6 +18,9 @@ Week 4 Tutorial Sample - Created for INFR 2310 at Ontario Tech.
 
 using namespace nou;
 
+bool mode = false;
+const char* nameMode = "Catmull";
+
 //Forward declaring our global resources for this demo.
 std::unique_ptr<ShaderProgram> prog_texLit, prog_lit, prog_unlit;
 std::unique_ptr<Mesh> duckMesh, boxMesh;
@@ -41,8 +44,9 @@ T LERP(const T& p0, const T& p1, float t)
 template<typename T>
 T Catmull(const T& p0, const T& p1, const T& p2, const T& p3, float t)
 {
-	//TODO: Implement Catmull-Rom interpolation.
-	return p0;
+	return 0.5f * (2.f * p1 + t * (-p0 + p2)
+		+ t * t * (2.f * p0 - 5.f * p1 + 4.f * p2 - p3)
+		+ t * t * t * (-p0 + 3.f * p1 - 3.f * p2 + p3));
 }
 
 //TODO (For part of this week's task): Implement your Bezier function.
@@ -54,8 +58,19 @@ T Catmull(const T& p0, const T& p1, const T& p2, const T& p3, float t)
 template<typename T>
 T Bezier(const T& p0, const T& p1, const T& p2, const T& p3, float t)
 {
-	return p0;
+	return LERP(Bezier2(p0,p1,p2,t), Bezier2(p1,p2,p3,t),t);
 }
+template<typename T>
+T Bezier2(const T& p0, const T& p1, const T& p2, float t)
+{
+	return LERP(Bezier1(p0, p1, t), Bezier1(p1, p2, t), t);
+}
+template<typename T>
+T Bezier1(const T& p0, const T& p1,  float t)
+{
+	return LERP(p0,p1,t);
+}
+
 
 int main()
 {
@@ -88,7 +103,7 @@ int main()
 
 	//Setting up our utility to draw the given path.
 	PathSampler sampler = PathSampler();
-	
+
 	Entity pathDrawUtility = Entity::Create();
 	pathDrawUtility.Add<CLineRenderer>(pathDrawUtility, sampler, *lineMat);
 
@@ -132,14 +147,57 @@ int main()
 		static bool listPanel = true;
 		ImGui::Begin("Waypoints", &listPanel, ImVec2(300, 200));
 
-		//TODO: How do we add a waypoint?
-		//TODO: How do we remove a waypoint?
+		ImGui::LabelText("", nameMode);
+
+		//Add a new waypoint!
+		if (ImGui::Button("Add"))
+		{
+			points.push_back(Entity::Allocate());
+			auto& p = points.back();
+			p->Add<CMeshRenderer>(*p, *boxMesh, *unselectedMat);
+			p->transform.m_scale = glm::vec3(0.1f, 0.1f, 0.1f);
+
+			//Initialize our position somewhere near the last waypoint.
+			if (points.size() > 1)
+			{
+				auto& lastP = points[points.size() - 2];
+				p->transform.m_pos = lastP->transform.m_pos + glm::vec3(0.2f, 0.0f, 0.0f);
+			}
+		}
+
+		//Remove the last waypoint.
+		if (ImGui::Button("Remove") && points.size() > 0)
+		{
+			points.pop_back();
+		}
+
+		
+		if (ImGui::Button(nameMode))
+		{
+			if (mode == false)
+			{
+				duckEntity.Get<CPathAnimator>().SetMode(PathSampler::PathMode::CATMULL);
+				sampler.m_mode = PathSampler::PathMode::CATMULL;
+
+				nameMode = "Bezier";
+				mode = true;
+			}
+			else if (mode == true)
+			{
+				duckEntity.Get<CPathAnimator>().SetMode(PathSampler::PathMode::BEZIER);
+				sampler.m_mode = PathSampler::PathMode::BEZIER;
+
+				nameMode = "Catmull";
+				mode = false;
+			}
+			
+		}
 
 		//Interface for selecting a waypoint.
 		static size_t pointSelected = 0;
 		static std::string pointLabel = "";
 
-		if(pointSelected >= points.size())
+		if (pointSelected >= points.size())
 			pointSelected = points.size() - 1;
 
 		for (size_t i = 0; i < points.size(); ++i)
@@ -148,11 +206,11 @@ int main()
 
 			if (ImGui::Selectable(pointLabel.c_str(), i == pointSelected))
 			{
-				if(pointSelected < points.size())
+				if (pointSelected < points.size())
 					points[pointSelected]->Get<CMeshRenderer>().SetMaterial(*unselectedMat);
-			
+
 				pointSelected = i;
-			}	
+			}
 		}
 
 		ImGui::End();
@@ -167,7 +225,11 @@ int main()
 
 			ImGui::Begin("Point Coordinates", &transformPanel, ImVec2(300, 100));
 
-			//TODO: How will we update our point's coordinates?
+			//This will tie the position of the selected
+			//waypoint to input fields rendered with Imgui.
+			ImGui::SliderFloat("X", &(transform.m_pos.x), -2.f, 2.f);
+			ImGui::SliderFloat("Y", &(transform.m_pos.y), -2.f, 2.f);
+			ImGui::SliderFloat("Z", &(transform.m_pos.z), -2.f, 2.f);
 
 			ImGui::End();
 		}

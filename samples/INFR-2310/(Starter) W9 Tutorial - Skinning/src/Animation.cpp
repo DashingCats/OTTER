@@ -53,6 +53,29 @@ namespace nou
 	void SkeletalAnimClip::Update(float deltaTime, const Skeleton& skeleton)
 	{
 		//TODO: Complete this function.
+		if (m_anim.duration != 0.0f)
+		{
+			if (m_play == true)
+				m_timer += deltaTime * m_speed;
+				
+
+			if ((m_timer > m_anim.duration) && (m_loop == true) || (m_restart == true))
+			{
+				std::fill(m_rotFrame.begin(), m_rotFrame.end(), 0);
+				std::fill(m_posFrame.begin(), m_posFrame.end(), 0);
+				
+			}
+
+			while ((m_timer > m_anim.duration) && (m_loop == true) || m_restart == true)
+			{
+				m_timer -= m_anim.duration;
+				m_restart = false;
+			}
+						
+
+			UpdatePositions();
+			UpdateRotations();
+		}
 	}
 
 	void SkeletalAnimClip::Apply(Skeleton& skeleton)

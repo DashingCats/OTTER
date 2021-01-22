@@ -6,17 +6,17 @@ CKnightFSM.h
 Simple FSM component for our animated knight.
 */
 
-#include "CKnightFSM.h"
+#include "CWarriorFSM.h"
 #include "Sprites/CSpriteAnimator.h"
 
 namespace nou
 {
 	//String labels for animations.
-	const std::string CKnightFSM::idleClip = "idle";
-	const std::string CKnightFSM::runClip = "walk";
-	const std::string CKnightFSM::attackClip = "attack";
+	const std::string CWarriorFSM::idleClip = "idle";
+	const std::string CWarriorFSM::runClip = "walk";
+	const std::string CWarriorFSM::attackClip = "attack";
 
-	CKnightFSM::CKnightFSM(Entity& owner)
+	CWarriorFSM::CWarriorFSM(Entity& owner)
 	{
 		m_owner = &owner;
 		m_state = AnimState::IDLE;
@@ -24,7 +24,7 @@ namespace nou
 		SetState(m_state);
 	}
 
-	void CKnightFSM::SetState(CKnightFSM::AnimState state)
+	void CWarriorFSM::SetState(CWarriorFSM::AnimState state)
 	{
 		m_state = state;
 
@@ -49,7 +49,7 @@ namespace nou
 	}
 
 
-	void CKnightFSM::Update()
+	void CWarriorFSM::Update()
 	{
 		auto& animator = m_owner->Get<CSpriteAnimator>();
 
@@ -57,26 +57,15 @@ namespace nou
 		switch (m_state)
 		{
 		case AnimState::IDLE:
-
-			if (GetVariable("moving"))
+			if (GetVariable("move"))
 				SetState(AnimState::RUN);
-			if (GetVariable("attack"))
-				SetState(AnimState::ATTACK);
-			break;
-
 		case AnimState::RUN:
-			if (!GetVariable("moving"))
+			if (!GetVariable("move"))
 				SetState(AnimState::IDLE);
-			if (GetVariable("attack"))
+		case AnimState::ATTACK:
+			if (GetVariable("fight"))
 				SetState(AnimState::ATTACK);
-			break;
 
-		default:
-			if (!GetVariable("moving") && animator.IsDone())
-				SetState(AnimState::IDLE);
-			if (GetVariable("moving") && animator.IsDone())
-				SetState(AnimState::RUN);
-			break;
 		}
-	}	
+	}
 }

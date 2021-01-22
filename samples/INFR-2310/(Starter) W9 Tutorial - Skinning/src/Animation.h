@@ -64,10 +64,15 @@ namespace nou
 		//Apply the output of this node to a skeleton.
 		void Apply(Skeleton& skeleton);
 
+		float m_speed = 1;
+		bool m_loop = true;
+		bool m_play = true;
+		bool m_restart = false;
+		
 		protected:
-
 		//Our local timer.
 		float m_timer;
+
 		//The data for our animation clip.
 		const SkeletalAnim& m_anim;
 		//Which frame indices we are on for each joint.

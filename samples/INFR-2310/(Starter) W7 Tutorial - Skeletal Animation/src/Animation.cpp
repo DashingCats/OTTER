@@ -52,10 +52,59 @@ namespace nou
 
 	void SkeletalAnimClip::Update(float deltaTime, const Skeleton& skeleton)
 	{
+		m_timer += deltaTime;
+
 		//TODO: Implement this function!
 		//(You will be REPLACING what is here,
 		//not just adding to it.)
+		for (size_t i = 0; i < m_anim.data.size(); ++i)
+		{
+			JointPose& pose = m_result[m_anim.data[i].jointInd];
 
+			if (m_anim.data[i].posFrames > 0)
+			{
+				pose.pos = m_anim.data[i].posKeys[0];
+			}
+
+			if (m_anim.data[i].rotFrames == 0)
+			{
+				pose.rotation = m_anim.data[i].rotKeys[0];
+			}
+			else if ((m_anim.data[i].rotFrames > 0))
+			{
+				int current = m_rotFrame[i];
+				int next = (current + 1);
+
+				if (m_timer > m_anim.duration)
+				{
+					m_timer = 0;
+					for (int c(0); c < m_anim.data.size(); ++c)
+						m_rotFrame[c] = 0;
+				}
+					
+
+				while (m_anim.data[i].rotTimes[next] < m_timer)
+				{
+					next++;
+					if (next <= m_anim.data[i].rotFrames)
+						next = 0;
+					
+					current++;
+					m_rotFrame[i]++;
+
+					if (m_rotFrame[i] >= m_anim.data[i].rotFrames)
+					{
+						m_rotFrame[i] = 0;
+					}
+					if (next == 0)
+						break;
+				}
+
+				float t = ((m_timer - m_anim.data[i].rotTimes[current]) / (m_anim.data[i].rotTimes[next] - m_anim.data[i].rotTimes[current]));
+
+				pose.rotation = glm::mix(m_anim.data[i].rotKeys[current], m_anim.data[i].rotKeys[next], t);
+			}
+		}
 	}
 
 	void SkeletalAnimClip::Apply(Skeleton& skeleton)

@@ -31,6 +31,27 @@ namespace nou
 	void CSpriteAnimator::Update(float deltaTime)
 	{
 		//TODO: Complete this function.
+		if (m_isPlaying && m_anim->frames.size() != 0)
+		{
+			m_timer += deltaTime;
+
+			while (m_timer >= m_anim->frameTime)
+			{
+				m_timer -= m_anim->frameTime;
+				++m_frame;
+			}
+
+			if (m_frame >= m_anim->frames.size())
+			{
+				m_isPlaying = m_loop;
+				m_isDone = !m_isPlaying;
+
+				m_frame = (m_loop) ? m_frame % m_anim->frames.size() : m_anim->frames.size() - 1;
+
+			}
+
+			m_owner->Get<CSpriteRenderer>().SetFrame(m_anim->frames[m_frame]);
+		}
 	}
 
 	void CSpriteAnimator::PlayOnce(const std::string& name)

@@ -63,6 +63,16 @@ int main()
 	auto idleAnim = std::make_unique<SkeletalAnim>();
 	GLTF::LoadAnimation("models/boi/Idle.gltf", *(idleAnim.get()));
 
+	auto headAnim = std::make_unique<SkeletalAnim>();
+	GLTF::LoadAnimation("models/boi/HeadShake.gltf", *(headAnim.get()));
+
+	auto walkAnim = std::make_unique<SkeletalAnim>();
+	GLTF::LoadAnimation("models/boi/Walk.gltf", *(walkAnim.get()));
+
+
+	headAnim->Keep({ 13 });
+	headAnim->MakeDiffWith(boiMesh->m_skeleton);
+
 	//Make our camera...
 	Entity camEntity = Entity::Create();
 	auto& cam = camEntity.Add<CCamera>(camEntity);
@@ -78,7 +88,12 @@ int main()
 	//Skeletal animator.
 	auto& skinnedAnimator = boiEntity.Add<CAnimator>(boiEntity);
 	//TODO: Add idle animation as blend tree root.
+	skinnedAnimator.GetBlendtree()->Insert(*idleAnim);
+
 	//TODO: Add additive head nod animation to blend tree.
+	SkeletalAnimNode* addNodeB = skinnedAnimator.GetBlendtree()->Insert(*walkAnim, SkeletalAnimNode::BlendMode::BLEND, 1.0f);
+	SkeletalAnimNode* addNode = skinnedAnimator.GetBlendtree()->Insert(*headAnim, SkeletalAnimNode::BlendMode::ADD, 1.0f);
+
 
 	//Make an entity for drawing our debug skeleton (just a box at each joint).
 	Entity jointEntity = Entity::Create();
@@ -138,6 +153,21 @@ int main()
 		App::StartImgui();
 
 		//TODO: Add controls for strength of our additive nod animation.
+		static bool panel = true;
+		static float addParam = 0.0f;
+		static float addParamB = 0.0f;
+
+		ImGui::Begin("RIP - Ducky", &panel, ImVec2(300,300));
+
+		ImGui::SliderFloat("Blend Strength", &addParamB, 0.0f, 1.0f);
+		addNodeB->SetBlendParam(addParamB);
+		ImGui::SliderFloat("Head Shake", &addParam, 0.0f, 1.0f);
+		addNode->SetBlendParam(addParam);
+
+		
+		
+		
+		ImGui::End();
 
 		App::EndImgui();
 

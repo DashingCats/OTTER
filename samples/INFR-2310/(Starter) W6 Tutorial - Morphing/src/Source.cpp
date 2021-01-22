@@ -51,6 +51,9 @@ int main()
 	boiEntity.transform.m_rotation = glm::angleAxis(glm::radians(-30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	//TODO: Add and set up our animator.
+	auto& animator = boiEntity.Add<CMorphAnimator>(boiEntity);
+	animator.SetFrameTime(0.5f);
+	animator.SetFrames(boiFrames);
 
 	App::Tick();
 
@@ -63,6 +66,7 @@ int main()
 		
 		//Updates the camera.
 		camEntity.Get<CCamera>().Update();
+		boiEntity.Get<CMorphAnimator>().Update(deltaTime);
 
 		boiEntity.transform.RecomputeGlobal();
 		boiEntity.Get<CMorphMeshRenderer>().Draw();
@@ -96,7 +100,7 @@ void LoadDefaultResources()
 	std::string filename;
 
 	//Start by just loading in our two base frames.
-	for (int i = 0; i <= 1; ++i)
+	for (int i = 0; i <= 7; ++i)
 	{
 		filename = boiPrefix + std::to_string(i) + ".gltf";
 

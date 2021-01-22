@@ -29,6 +29,11 @@ int main()
 
 	App::InitImgui();
 
+	//
+	bool loop = true;
+	bool play = true;
+	const char* buttonNamePause = "Play";
+
 	//Loading shaders...
 	auto v_texLit = std::make_unique<Shader>("shaders/texturedlit.vert", GL_VERTEX_SHADER);
 	auto f_texLit = std::make_unique<Shader>("shaders/texturedlit.frag", GL_FRAGMENT_SHADER);
@@ -136,7 +141,40 @@ int main()
 
 		//Put any ImGUI code you need in here.
 		//(Don't forget to call Imgui::Begin and Imgui::End!)
+		static bool panelOpen = true;
+		static float speed = 1.0f;
+		static int slider = 0;
 
+		ImGui::Begin("Controller", &panelOpen, ImVec2(250, 300));
+
+		if (ImGui::Button(buttonNamePause))
+		{
+			if (boiEntity.Get<CAnimator>().GetClip()->m_play == false)
+			{
+				buttonNamePause = "Play";
+				boiEntity.Get<CAnimator>().GetClip()->m_play = true;
+			}
+			else
+			{
+				buttonNamePause = "Pause";
+				boiEntity.Get<CAnimator>().GetClip()->m_play = false;
+			}
+				
+				
+		}		
+		if (ImGui::Checkbox("Loop", &loop))
+		{
+			boiEntity.Get<CAnimator>().GetClip()->m_loop = loop;
+		}
+		if (ImGui::SliderFloat("Speed", &speed, 0.f, 4.f))
+		{
+			boiEntity.Get<CAnimator>().GetClip()->m_speed = speed;
+		}
+		if (ImGui::Button("Restart"))
+		{
+			boiEntity.Get<CAnimator>().GetClip()->m_restart = true;
+		}
+		ImGui::End();
 		App::EndImgui();
 
 		App::SwapBuffers();

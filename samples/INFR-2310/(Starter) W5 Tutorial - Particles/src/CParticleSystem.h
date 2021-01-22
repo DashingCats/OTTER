@@ -46,17 +46,28 @@ namespace nou
 		//How fast particles should start out.
 		float startSpeed;
 
+		float endSize;
+
 		//TODO: Add attributes to animate particle colour!
+		glm::vec4 startColor;
+		glm::vec4 endColor;
 
 		//TODO: Add attributes to control emission!
+		float emissionRate;
+		float tanTheta;
 
 		//Specify default values for our particle system specs.
 		ParticleParam()
 		{
 			maxParticles = 100;
-			lifetime = 5.0f;
+			lifetime = 20.0f;
 			startSize = 0.2f;
 			startSpeed = 1.0f;
+			startColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			endColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			endSize = 0.2f;
+			emissionRate = 1.0f;
+			tanTheta = glm::tan(glm::radians(15.0f));
 		}
 	};
 

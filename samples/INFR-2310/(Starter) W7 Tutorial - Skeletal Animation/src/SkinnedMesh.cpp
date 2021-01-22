@@ -51,6 +51,20 @@ namespace nou
 	void Joint::DoFK()
 	{
 		//TODO: Complete this function.
+		if (m_owner == nullptr)
+			return;
+
+		glm::mat4 local = glm::translate(m_pos) * glm::toMat4(glm::normalize(m_rotation));
+
+		if (m_parent)
+			m_global = (*m_owner)[m_parentInd].m_global * local;
+		else
+			m_global = local;
+
+		for (auto childInd : m_childrenInd)
+		{
+			(*m_owner)[childInd].DoFK();
+		}
 	}
 
 	Skeleton::Skeleton()
@@ -80,6 +94,9 @@ namespace nou
 	void Skeleton::DoFK()
 	{
 		//TODO: Complete this function.
+		if (m_rootInd < m_joints.size())
+			m_joints[m_rootInd].DoFK();
+		
 	}
 
 	Joint& Skeleton::operator[](int index)

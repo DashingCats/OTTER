@@ -32,11 +32,11 @@ void main()
 {
     //TODO: What is our world-space vertex position?
     //(With morph target animation...?)
-    outPos = model * inPos_0;
+    outPos = model * mix(inPos_0, inPos_1, t);
 
     //TODO: What is our world-space normal position?
     //(With morph target animation...?)
-    outNorm = normal * inNorm_0;
+    outNorm = normal * mix (inNorm_0, inNorm_1, t);
     
     //Output position - our viewprojection matrix
     //multiplied by world-space position.

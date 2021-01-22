@@ -53,6 +53,8 @@ int main()
 	GLTF::LoadSkinnedMesh("models/boi/Base.gltf", *boiMesh);
 
 	//TODO: Load our animation.
+	auto walkAnim = std::make_unique<SkeletalAnim>();
+	GLTF::LoadAnimation("models/boi/Walk.gltf", *(walkAnim.get()));
 
 	//Make our camera...
 	Entity camEntity = Entity::Create();
@@ -67,6 +69,7 @@ int main()
 	boiEntity.transform.m_pos = glm::vec3(0.0f, -0.75f, 0.0f);
 	boiEntity.transform.m_scale = glm::vec3(0.5f, 0.5f, 0.5f);
 	//TODO: Add an animator component!
+	auto& skinnedAnimator = boiEntity.Add<CAnimator>(boiEntity, *walkAnim);
 
 	//Make an entity for drawing our debug skeleton (just a box at each joint).
 	Entity jointEntity = Entity::Create();
@@ -92,6 +95,8 @@ int main()
 		float degreeSpin = anglePerSecond * deltaTime;
 		boiEntity.transform.m_rotation = glm::angleAxis(glm::radians(degreeSpin), glm::vec3(0.0f, 1.0f, 0.0f)) * boiEntity.transform.m_rotation;
 		boiEntity.transform.RecomputeGlobal();
+
+		boiEntity.Get <CAnimator>().Update(deltaTime);
 
 		//Draw de boi.
 		boiEntity.Get<CSkinnedMeshRenderer>().Draw();

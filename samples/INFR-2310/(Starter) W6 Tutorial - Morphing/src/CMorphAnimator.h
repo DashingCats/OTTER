@@ -30,6 +30,8 @@ namespace nou
 		void Update(float deltaTime);
 
 		//TODO: Add functions to set frames and in-between frame time.
+		void SetFrames(std::vector<std::unique_ptr<Mesh>>& frames);
+		void SetFrameTime(float frameTime);
 
 		protected:
 
@@ -41,8 +43,8 @@ namespace nou
 
 			//TODO: You'll need to define a way to store and manage full
 			//animation clips for the exercise.
-			const Mesh* frame0;
-			const Mesh* frame1;
+			std::vector<Mesh*> frames;
+
 			//The time inbetween frames.
 			float frameTime;
 
@@ -54,5 +56,7 @@ namespace nou
 
 		float m_timer;
 		bool m_forwards;
+		int currentFrame = 0;
+		int nextFrame = 1;
 	};
 }

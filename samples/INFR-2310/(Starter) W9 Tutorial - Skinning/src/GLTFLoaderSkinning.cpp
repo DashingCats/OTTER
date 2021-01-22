@@ -52,6 +52,16 @@ namespace nou::GLTF
 		}
 
 		//Step 4: Extract skin weights.
+		result = ExtractSkinWeights(*gltf, mesh, err, warn);
+
+		if (!result)
+		{
+			DumpErrorsAndWarnings(filename, err, warn);
+			return;
+		}
+
+		DumpErrorsAndWarnings(filename, err, warn);
+		printf("Loaded skinned mesh from %s.\n", filename.c_str());
 	}
 
 	void LoadAnimation(const std::string& filename, SkeletalAnim& anim)
@@ -297,7 +307,7 @@ namespace nou::GLTF
 			err = "Cannot load joint influences and weights - no geometry data in file.";
 			return false;
 		}
-
+		
 		const tinygltf::Primitive& geom = gltf.meshes[0].primitives[0];
 
 		int influenceID = FindAccessor(geom, "JOINTS_0");
